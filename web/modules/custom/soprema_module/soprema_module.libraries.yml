@@ -1,0 +1,6 @@
+soprema_module.access_front:
+  js:
+    js/soprema-access-front.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal

@@ -1,0 +1,22 @@
+<div class="block--soprema-access soprema-access">
+
+    <div class="access-go-back">
+        <a href="#" class="go-back-link" title="{{ 'Go back to login' }}"><span class="glyphicon glyphicon-arrow-left"></span></a>
+    </div>
+
+    <div class="access-logo text-center">
+        <img src="{{ site_logo }}" class="img-responsive front-logo" alt="{{ site_name }}" />
+    </div>
+
+    <div class="soprema-login-form">
+        <div class="form-title text-center">{{ 'Log in'|t }}</div>
+        {{ soprema_login_form }}
+    </div>
+    <div class="soprema-reset-pass-form">
+        <div class="form-title text-center">{{ 'Reset password'|t }}</div>
+        {{ soprema_reset_pass_form }}
+    </div>
+    <div class="reset-pass-link-container text-center">
+        <a href="#" class="reset-pass-link">{{ 'Have you forgotten your password?'|t }}</a>
+    </div>
+</div>

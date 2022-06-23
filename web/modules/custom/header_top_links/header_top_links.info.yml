@@ -1,0 +1,5 @@
+name: 'Header Top Links'
+type: module
+description: 'Provide a block with custom links.'
+core: 8.x
+package: 'USEIT'

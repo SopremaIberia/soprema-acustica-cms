@@ -1,0 +1,50 @@
+@font-face {
+  font-family: 'soprema-icon';
+  src:  url('fonts/soprema-icon.eot?8abp6o');
+  src:  url('fonts/soprema-icon.eot?8abp6o#iefix') format('embedded-opentype'),
+    url('fonts/soprema-icon.ttf?8abp6o') format('truetype'),
+    url('fonts/soprema-icon.woff?8abp6o') format('woff'),
+    url('fonts/soprema-icon.svg?8abp6o#soprema-icon') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+[class^="si-"], [class*=" si-"] {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: 'soprema-icon', 'Roboto' !important;
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.si-logout:before {
+  content: "\e900";
+  color: #fff;
+}
+.si-users:before {
+  content: "\e901";
+  color: #fff;
+}
+.si-notifications:before {
+  content: "\e902";
+  color: #fff;
+}
+.si-documents:before {
+  content: "\e903";
+  color: #fff;
+}
+.si-products:before {
+  content: "\e904";
+  color: #fff;
+}
+.si-acoustic_solutions:before {
+  content: "\e905";
+  color: #fff;
+}

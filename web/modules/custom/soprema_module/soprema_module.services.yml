@@ -1,0 +1,5 @@
+services:
+  soprema_module.redirect_from_frontpage:
+    class: Drupal\soprema_module\EventSubscriber\RedirectFromFrontpageSubscriber
+    tags:
+    - { name: event_subscriber }

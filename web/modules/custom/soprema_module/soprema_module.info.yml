@@ -1,0 +1,5 @@
+name: 'Soprema Module'
+type: module
+description: 'Soprema Module Features.'
+core: 8.x
+package: 'USEIT'

@@ -1,0 +1,16 @@
+# Portuguese, Portugal translation of Node View Permissions (8.x-1.2)
+# Copyright (c) 2017 by the Portuguese, Portugal translation team
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Node View Permissions (8.x-1.2)\n"
+"POT-Creation-Date: 2017-12-26 03:43+0000\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Language-Team: Portuguese, Portugal\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+
+msgid "Access control"
+msgstr "Controlo de acessos"

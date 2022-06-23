@@ -1,0 +1,576 @@
+<?php
+
+/**
+ * @file
+ * Contains soprema_module.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function soprema_module_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the soprema_module module.
+    case 'help.page.soprema_module':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Soprema Module Features.') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function soprema_module_theme() {
+  return [
+    'soprema_access' => [
+      'variables' => [
+        'soprema_login_form' => NULL,
+        'soprema_reset_pass_form' => NULL,
+        'site_logo' => NULL
+      ],
+    ],
+  ];
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function soprema_module_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+
+  $form['#attached']['library'][] = 'soprema_module/soprema_module.access_front';
+
+  //dpm($form_id);
+
+  if ($form_id == 'taxonomy_overview_terms') {
+    if (in_array('manager', \Drupal::currentUser()->getRoles())) {
+      unset($form['actions']['reset_alphabetical']);
+    }
+
+    $form['actions']['submit']['#attributes']['class'][] = 'no-margin-right';
+    $form['actions']['#attributes']['class'][] = 'pull-right';
+  }
+  else if ($form_id == 'views_bulk_operations_confirm_action') {
+    $form['actions']['submit']['#button_type'] = 'primary';
+    $form['actions']['cancel']['#button_type'] = 'danger';
+    $form['actions']['#prefix'] = '<div class="form-actions">';
+    $form['actions']['#suffix'] = '</div>';
+  }
+  else if ($form_id == 'node_acoustic_solution_form' || $form_id == 'node_acoustic_solution_edit_form') {
+    if ($form_id == 'node_acoustic_solution_form') {
+      $form['langcode']['widget'][0]['value']['#default_value'] = \Drupal::languageManager()->getCurrentLanguage()->getId();
+    }
+
+    $form['actions']['submit']['#attributes']['class'][] = 'no-margin-right';
+    $form['actions']['submit']['#weight'] = 101;
+    $form['actions']['#attributes']['class'][] = 'pull-right';
+  }
+  else if ($form_id == 'node_product_range_form' || $form_id == 'node_product_range_edit_form') {
+    if ($form_id == 'node_product_range_form') {
+      $form['langcode']['widget'][0]['value']['#default_value'] = \Drupal::languageManager()->getCurrentLanguage()->getId();
+    }
+
+    $form['actions']['submit']['#attributes']['class'][] = 'no-margin-right';
+    $form['actions']['submit']['#weight'] = 101;
+    $form['actions']['#attributes']['class'][] = 'pull-right';
+  }
+  else if ($form_id == 'node_document_form' || $form_id == 'node_document_edit_form') {
+    if ($form_id == 'node_notification_form') {
+      $form['langcode']['widget'][0]['value']['#default_value'] = \Drupal::languageManager()->getCurrentLanguage()->getId();
+    }
+
+    $form['actions']['submit']['#attributes']['class'][] = 'no-margin-right';
+    $form['actions']['submit']['#weight'] = 101;
+    $form['actions']['#attributes']['class'][] = 'pull-right';
+
+  }
+  else if ($form_id == 'node_notification_form' || $form_id == 'node_notification_edit_form') {
+    if ($form_id == 'node_notification_form') {
+      $form['langcode']['widget'][0]['value']['#default_value'] = \Drupal::languageManager()->getCurrentLanguage()->getId();
+    }
+
+    $form['actions']['submit']['#attributes']['class'][] = 'no-margin-right';
+    $form['actions']['submit']['#weight'] = 101;
+    $form['actions']['#attributes']['class'][] = 'pull-right';
+
+    if (!in_array('administrator', Drupal::currentUser()->getRoles())) {
+      $form['field_notification_token']['#access'] = FALSE;
+    }
+  }
+  else if ($form_id == 'user_login_form') {
+    $form['#submit'][] = 'soprema_module_login_form_redirect';
+  }
+  else if ($form['#id'] == 'views-exposed-form-acoustic-solutions-block-1') {
+    $form['decision_tree_filter']['#options'] = vid_options();
+  }
+  else if ($form_id == 'user_register_form') {
+    $form['field_user_address']['#access'] = FALSE;
+  }
+}
+
+/**
+ * Set redirect to Solutions page after login.
+ *
+ * @param $form
+ * @param \Drupal\Core\Form\FormStateInterface $form_state
+ */
+function soprema_module_login_form_redirect(&$form, \Drupal\Core\Form\FormStateInterface $form_state) {
+  $form_state->setRedirect('entity.node.canonical', ['node' => 2]);
+}
+
+
+/**
+ * Implements hook_mail().
+ */
+function soprema_module_mail($key, &$message, $params) {
+  $options = array(
+    'langcode' => $message['langcode'],
+  );
+
+  switch ($key) {
+    case 'rest_api_send_message':
+      $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed; delsp=yes';
+
+      $cc = array(
+        'Cc' => 'sopremaacustica@gmail.com',
+      );
+      $message['headers'] += $cc;
+
+      $message['body'] = [];
+      $text[] = '<div>
+                    <div><label>De:</label> <span>' . $params['from'] . '</span></div>
+                    <div><label>Consulta:</label><div><p>' . $params['message'] . '</p></div></div>
+                </div>';
+
+      $message['from'] = $params['from'];
+      $message['subject'] = '[' . \Drupal::config('system.site')->get('name') . '] - Message';
+
+      $message['body'] = array_map(function ($text) {
+        return \Drupal\Core\Render\Markup::create($text);
+      }, $text);
+
+      break;
+  }
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function soprema_module_node_insert(Drupal\node\Entity\Node $node) {
+
+  if ($node->bundle() == 'notification') {
+    $images = [];
+    $files = [];
+    $links = NULL;
+
+    foreach ($node->field_notification_images as $img_ref) {
+      $images[] = soprema_module_get_file_absolute_path($img_ref->target_id);
+    }
+
+    foreach ($node->field_notification_documents as $doc_ref) {
+      $files[] = [
+        'file_path' => soprema_module_get_file_absolute_path($doc_ref->target_id),
+        'file_description' => $doc_ref->description,
+      ];
+    }
+
+    $links = soprema_module_multiple_links_data($node->field_notification_links);
+
+
+    if (isset($node->field_notification_token->value) && !empty($node->field_notification_token->value)) {
+      $send_to = $node->field_notification_token->value;
+    }
+    else {
+      $send_to = '/topics/users-app';
+    }
+
+    $notification = array(
+      'to'  => $send_to,
+      'priority' => 'high',
+      'content_available' => TRUE,
+      'notification' => array(
+        'title' => $node->getTitle(),
+        'body' => strip_tags($node->body->value),
+        'icon' => 'notification_icon',
+        'sound' => 'default',
+        'badge' => 1
+      ),
+      'data' => array(
+        'id' => $node->id(),
+        'title' => $node->getTitle(),
+        'sound' => 'default',
+        'icon' => 'notification_icon',
+        'body' => strip_tags($node->body->value),
+        'images' => count($images) == 0 ? NULL : $images,
+        'files' => count($files) == 0 ? NULL : $files,
+        'links' => $links,
+        'type' => 'notification',
+      )
+    );
+
+    $send = soprema_module_send_notification_push($notification);
+
+    //dpm('---insert---');
+    //dpm($notification);
+
+    if ($send) {
+      \Drupal::messenger()->addMessage(t('<strong><i>@title</i></strong> push notification was sent correctly.', array('@title' => $node->getTitle())));
+
+      $node->set('field_notification_sent', $node->language()->getId());
+      $node->save();
+    }
+    else {
+      \Drupal::messenger()->addMessage(t('<strong><i>@title</i></strong> push notification was not sent.', array('@title' => $node->getTitle())), 'error');
+    }
+  }
+}
+
+/**
+ * Implements hook_node_presave().
+ */
+/*
+function soprema_module_node_presave(Drupal\node\Entity\Node $node) {
+  if ($node->bundle() == 'notification') {
+    $node_lang = array('value' => $node->language()->getId());
+    $langs_sent = $node->field_notification_sent->getValue();
+    $nid = $node->id();
+
+    if ($nid && !in_array($node_lang, $langs_sent)) {
+      $images = [];
+      $files = [];
+      $links = NULL;
+
+      foreach ($node->field_notification_images as $img_ref) {
+        $images[] = soprema_module_get_file_absolute_path($img_ref->target_id);
+      }
+
+      foreach ($node->field_notification_documents as $doc_ref) {
+        $files[] = [
+          'file_path' => soprema_module_get_file_absolute_path($doc_ref->target_id),
+          'file_description' => $doc_ref->description,
+        ];
+      }
+
+      $links = soprema_module_multiple_links_data($node->field_notification_links);
+
+      if (isset($node->field_notification_token->value) && !empty($node->field_notification_token->value)) {
+        $send_to = $node->field_notification_token->value;
+      }
+      else {
+        $send_to = '/topics/users-app';
+      }
+
+      $notification = array(
+        'to'  => $send_to,
+        'priority' => 'high',
+        'content_available' => TRUE,
+        'notification' => array(
+          'title' => $node->getTitle(),
+          'body' => strip_tags($node->body->value),
+          'icon' => 'notification_icon',
+          'sound' => 'default',
+          'badge' => 1
+        ),
+        'data' => array(
+          'id' => $node->id(),
+          'nid' => $node->nid->value,
+          'title' => $node->getTitle(),
+          'sound' => 'default',
+          'icon' => 'notification_icon',
+          'body' => strip_tags($node->body->value),
+          'images' => $images,
+          'files' => $files,
+          'links' => $links,
+          'type' => 'notification',
+        )
+      );
+
+
+      $send = soprema_module_send_notification_push($notification);
+
+      //dpm('---UPDATE---');
+      //dpm($notification);
+
+      if ($send) {
+        \Drupal::messenger()->addMessage(t('<strong><i>@title</i></strong> push notification was sent correctly.', array('@title' => $node->getTitle())));
+
+        $langs_sent[] = $node_lang;
+        $node->set('field_notification_sent', $langs_sent);
+      }
+      else {
+        \Drupal::messenger()->addMessage(t('<strong><i>@title</i></strong> push notification was not sent.', array('@title' => $node->getTitle())), 'error');
+      }
+    }
+  }
+}
+*/
+
+
+/*
+function soprema_module_preprocess_status_messages(&$variables) {
+  if(isset($variables['message_list']['status'])){
+    $status_messages = $variables['message_list']['status'];
+    foreach($status_messages as $delta => $message) {
+
+      \Drupal::logger('msg')->notice((string) $message);
+
+      if (strpos((string) $message, 'This value is not a valid email address') !== FALSE) {
+        $variables['message_list']['status'][$delta] = 'test invalid email';
+      }
+    }
+  }
+}
+*/
+
+
+
+
+
+
+
+/**** SOPREMA FUNCTIONS ****/
+
+function soprema_module_send_notification_push($notification) {
+  $firebase_app_id = 'AAAAgpM72ns:APA91bFOLKIsOtMmy6PaTSz61WKVwMgX4SJq9Uz5xC6a7WVzjW0Iwto_bG-OnTBtcqp0JsHInf9D1awNOEs1PmBaR2wFMbZR0tRNvSXeps5pemma66SDjU9MsVRn4QwU44H_GTrpC90A';
+  //AAAAgpM72ns:APA91bFOLKIsOtMmy6PaTSz61WKVwMgX4SJq9Uz5xC6a7WVzjW0Iwto_bG-OnTBtcqp0JsHInf9D1awNOEs1PmBaR2wFMbZR0tRNvSXeps5pemma66SDjU9MsVRn4QwU44H_GTrpC90A
+
+  $headers = array(
+    'Authorization: key=' . $firebase_app_id,
+    'Content-Type: application/json'
+  );
+
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, 'https://fcm.googleapis.com/fcm/send');
+  curl_setopt($ch, CURLOPT_POST, true);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($notification));
+  $result = curl_exec($ch);
+  curl_close($ch);
+
+  $result = json_decode($result, true);
+
+  //\Drupal::logger('soprema_module')->notice('<pre><code>' . print_r($notification, true) . '</code></pre>');
+  //Drupal::logger('soprema_module')->notice('<pre><code>' . print_r($result, true) . '</code></pre>');
+
+  if(isset($result['success']) && $result['success'] == 1){
+    \Drupal::logger('soprema_module')->notice('Push notification sent for node ' . $notification['data']['id'] . '. Message id: ' . $result['results'][0]['message_id']);
+    return TRUE;
+  }
+  else {
+    \Drupal::logger('soprema_module')->warning('Push notification was NOT sent for node ' . $notification['data']['id']);
+    return FALSE;
+  }
+}
+
+
+/**
+ * Get absolute path by fid
+ *
+ * @param $fid
+ *
+ * @return null|string
+ */
+function soprema_module_get_file_absolute_path($fid) {
+  $file = \Drupal\file\Entity\File::load($fid);
+
+  if ($file instanceof \Drupal\file\Entity\File) {
+    $uri = $file->getFileUri();
+
+    return file_create_url($uri);
+  }
+  else {
+    return NULL;
+  }
+}
+
+/**
+ * Get target_ids from multiple field
+ *
+ * @param $references
+ *
+ * @return array|null
+ */
+function soprema_module_multiple_targets($references) {
+  $results = NULL;
+
+  foreach ($references as $reference) {
+    $results[]['target_id'] = $reference->target_id;
+  }
+
+  return $results;
+}
+
+/**
+ * Get paragraph data
+ *
+ * @param $ref_paragraphs
+ * @param $bundle
+ *
+ * @return array|null
+ */
+function soprema_module_multiple_paragraphs($ref_paragraphs, $bundle) {
+  $results = NULL;
+
+  if ($bundle == 'layer_paragraph') {
+    foreach ($ref_paragraphs as $paragraph) {
+      $results[] = [
+        'field_lp_name' => $paragraph->entity->field_lp_name->value,
+        'field_lp_product_solution' => $paragraph->entity->field_lp_product_solution->value
+      ];
+    }
+  }
+  else if ($bundle == 'conditioning_paragraph')  {
+    foreach ($ref_paragraphs as $paragraph) {
+      $results[] = [
+        'field_cp_model' => $paragraph->entity->field_cp_model->value,
+        'field_cp_roll' => $paragraph->entity->field_cp_roll->value,
+        'field_cp_pallet' => $paragraph->entity->field_cp_pallet->value
+      ];
+    }
+  }
+
+  return $results;
+}
+
+/**
+ * Get values from multiple field
+ *
+ * @param $values
+ *
+ * @return array|null
+ */
+function soprema_module_multiple_values($values) {
+  $results = NULL;
+
+  foreach ($values as $value) {
+    $results[]['value'] = $value->value;
+  }
+
+  return $results;
+}
+
+/**
+ * Get link data from multiple field
+ *
+ * @param $links
+ *
+ * @return array|null
+ */
+function soprema_module_multiple_links_data($links) {
+  $results = NULL;
+
+  foreach ($links as $link) {
+    $results[] = [
+      'title' => $link->title,
+      'url' => $link->uri,
+    ];
+  }
+
+  return $results;
+}
+
+/**
+ * Get files path and description from multiple field
+ *
+ * @param $files
+ *
+ * @return array|null
+ */
+function soprema_module_multiple_files_data($files) {
+  $results = NULL;
+
+  foreach ($files as $file) {
+    $results[] = [
+      'title' => empty($file->description) ? NULL : $file->description,
+      'file_name' => $file->entity->filename->value,
+      'url' => soprema_module_get_file_absolute_path($file->target_id),
+    ];
+  }
+
+  return $results;
+}
+
+/**
+ * Get the set or default image path for a file image field (if either exist)
+ *
+ * @param $fid
+ * @param $entity_type_id
+ * @param $bundle
+ * @param $field_name
+ *
+ * @return null|string
+ */
+function _get_file_field_url($fid, $entity_type_id, $bundle, $field_name) {
+  $image_uri = NULL;
+  $img_url = NULL;
+
+  if ($fid != NULL) {
+    $file = \Drupal\file\Entity\File::load($fid);
+    if ($file) {
+      $image_uri = $file->getFileUri();
+    }
+  }
+
+
+  if (is_null($image_uri)) {
+    $field = \Drupal\field\Entity\FieldConfig::loadByName($entity_type_id, $bundle, $field_name);
+
+    if ($field) {
+      $default_image = $field->getSetting('default_image');
+
+      if ($default_image && $default_image['uuid']) {
+        $entity_repository = Drupal::service('entity.repository');
+        $defaultImageFile = $entity_repository->loadEntityByUuid('file', $default_image['uuid']);
+
+        if ($defaultImageFile) {
+          $image_uri = $defaultImageFile->getFileUri();
+        }
+      }
+    }
+  }
+
+  $img_url = is_null($image_uri) ? NULL : file_create_url($image_uri);
+
+  return $img_url;
+}
+
+
+/**
+ * Decision tree
+ */
+function vid_options() {
+  $vid = 'acoustic_solution_types';
+  $parent_tid = 0;
+  $depth = 1;
+  $load_entities = FALSE;
+  $collection_categories  = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadTree($vid, $parent_tid, $depth, $load_entities);
+
+  $options = array();
+  $options['All'] = t('- All -');
+
+  foreach ($collection_categories as $category) {
+    $parent_tid = $category->tid;
+
+    $options[$category->tid] = $category->name;
+    $collection_subcategories  = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadTree($vid, $parent_tid, $depth, $load_entities);
+
+    foreach ($collection_subcategories as $subcategory) {
+      $subcategory_parent = $subcategory->tid;
+
+      $options[$subcategory->tid] = ' -- ' . $subcategory->name;
+      $last_subcategories = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadTree($vid, $subcategory_parent, $depth, $load_entities);
+
+      foreach ($last_subcategories as $last_subcategory) {
+        $options[$last_subcategory->tid] = ' --- ' . $last_subcategory->name;
+      }
+    }
+  }
+
+  return $options;
+}
